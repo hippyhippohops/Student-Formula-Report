@@ -195,13 +195,189 @@ plot(FSAE{:,"Time"},FSAE{:,"TyreTempRROuter"},'k');
 % conductivity between tire and air, and Thermal conductivity between tire
 % and track surface
 
-% DO THIS
-
 % CALCULATE SLIP ANGLE FOR EACH TIRE
+
+% To calculate the slip angle of the front of the car, alpha_f, we need the
+% following data: lateral velocity (v), CG location (a) - [In this case,we
+% assume  that laterak velocity is just 1, but FIND OUT ACTUAL CG
+% LOCATION], Yawing velocity (r) - [In this case,we assume  that yawing
+% velocity is just rotational velocity about the Z axis, from reddit: Yaw
+% Rate and Slip Angles - CHECK IF IT IS TRUE], vehicle velocity (V), and
+% steer angle front wheels (delta). 
+
+% Slip Angle - Front Left
+
+v = FSAE{:,'GForceLat'};
+a = 1;
+r = FSAE{:,'AccelerationZ'};
+V = FSAE{:,'WheelSpeedFL'};
+delta = FSAE{:,'SteeringAngle'};
+
+slip_angle_front_left = [];
+
+for i=1:length(v)
+    slip_angle_front_left(i) = v(i)/V(i) + (a*r(i))/V(i) - delta(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_angle_front_left);
+title('Plot of Slip Angle of the Front Left Wheel against Time');
+%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
+
+% Slip Angle - Front Right
+
+v = FSAE{:,'GForceLat'};
+a = 1;
+r = FSAE{:,'AccelerationZ'};
+V = FSAE{:,'WheelSpeedFR'};
+delta = FSAE{:,'SteeringAngle'};
+
+slip_angle_front_right = [];
+
+for i=1:length(v)
+    slip_angle_front_right(i) = v(i)/V(i) + (a*r(i))/V(i) - delta(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_angle_front_right);
+title('Plot of Slip Angle of Front Right Wheel against Time');
+%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
+
+%NOTE THAT THE FORMULA FOR SLIP ANGLE IS DIFF FROM FRONT & REAR
+
+% Slip Angle - Rear Left
+
+v = FSAE{:,'GForceLat'};
+a = 1; % We use b for the rear formula
+b = 1;
+r = FSAE{:,'AccelerationZ'};
+V = FSAE{:,'WheelSpeedRL'};
+
+slip_angle_rear_left = [];
+
+for i=1:length(v)
+    slip_angle_rear_left(i) = v(i)/V(i) + (b*r(i))/V(i) ;
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_angle_rear_left);
+title('Plot of Slip Angle of Rear Left Wheel against Time');
+%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
+
+% Slip Angle - Rear Right
+
+v = FSAE{:,'GForceLat'};
+a = 1;
+b = 1;
+r = FSAE{:,'AccelerationZ'};
+V = FSAE{:,'WheelSpeedRR'};
+delta = FSAE{:,'SteeringAngle'};
+
+slip_angle_rear_right = [];
+
+for i=1:length(v)
+    slip_angle_rear_right(i) = v(i)/V(i) + (b*r(i))/V(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_angle_rear_right);
+title('Plot of Slip Angle of Rear Right Wheel against Time');
+%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
+
 
 % CALCULATE SLIP RATIO FOR EACH TIRE
 
+% SAE J670 defines the slip ratio of a tire as SR=(Ω − Ω0)/Ω0. In this
+% equation, Ω is the angular velocity of the driven wheel and Ω0 is the
+% angular velocity of the free-rolling situation. So, first we need to
+% calculate Ω0 is the angular velocity of the free-rolling situation, which
+% is expressed as v=ωR. In this equation, R is the object's radius and v is
+% its linear velocity.
+
+% Slip ratio for front left wheel
+
+angular_velocity_freerolling_FL = [];
+wheel_radius_FL = 12; 
+%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
+%DO I KEEP TRACK OF THIS?
+linear_velocity = FSAE{:,'WheelSpeedFL'};
+for i=1:length(linear_velocity)
+    angular_velocity_freerolling_FL(i) = linear_velocity(i)/wheel_radius_FL;
+end
+
+slip_ratio_FL = [];
+for i=1:length(linear_velocity)
+    slip_ratio_FL(i) = (linear_velocity(i)-angular_velocity_freerolling_FL(i))/angular_velocity_freerolling_FL(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_ratio_FL);
+title('Slip Ratio of Front Left Wheel against Time');
+
+% Slip ratio for front right wheel
+
+angular_velocity_freerolling_FR = [];
+wheel_radius_FR = 12; 
+%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
+%DO I KEEP TRACK OF THIS?
+linear_velocity = FSAE{:,'WheelSpeedFR'};
+for i=1:length(linear_velocity)
+    angular_velocity_freerolling_FR(i) = linear_velocity(i)/wheel_radius_FR;
+end
+
+slip_ratio_FR = [];
+for i=1:length(linear_velocity)
+    slip_ratio_FR(i) = (linear_velocity(i)-angular_velocity_freerolling_FR(i))/angular_velocity_freerolling_FR(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_ratio_FR);
+title('Slip Ratio of Front Right Wheel against Time');
+
+% Slip ratio for rear left wheel
+
+angular_velocity_freerolling_RL = [];
+wheel_radius_RL = 12; 
+%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
+%DO I KEEP TRACK OF THIS?
+linear_velocity = FSAE{:,'WheelSpeedRL'};
+for i=1:length(linear_velocity)
+    angular_velocity_freerolling_RL(i) = linear_velocity(i)/wheel_radius_RL;
+end
+
+slip_ratio_RL = [];
+for i=1:length(linear_velocity)
+    slip_ratio_RL(i) = (linear_velocity(i)-angular_velocity_freerolling_RL(i))/angular_velocity_freerolling_RL(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_ratio_RL);
+title('Slip Ratio of Rear Left Wheel against Time');
+
+% Slip ratio for Rear right wheel
+
+angular_velocity_freerolling_RR = [];
+wheel_radius_RR = 12; 
+%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
+%DO I KEEP TRACK OF THIS?
+linear_velocity = FSAE{:,'WheelSpeedRR'};
+for i=1:length(linear_velocity)
+    angular_velocity_freerolling_RR(i) = linear_velocity(i)/wheel_radius_RR;
+end
+
+slip_ratio_RR = [];
+for i=1:length(linear_velocity)
+    slip_ratio_RR(i) = (linear_velocity(i)-angular_velocity_freerolling_RR(i))/angular_velocity_freerolling_RR(i);
+end
+
+figure;
+plot(FSAE{:,'Time'},slip_ratio_RR);
+title('Slip Ratio of Rear Right Wheel against Time');
+
+
 % CALCULATE TIRE TEMPERATURE FOR EACH TIRE
+
+
 
 % PLOT TIRE TEMPERATURE AGAINST TIME FOR EACH TIRE
 
@@ -213,3 +389,5 @@ plot(FSAE{:,"Time"},FSAE{:,"TyreTempRROuter"},'k');
 
 % Plot Tire workload calculation from tire temperatures against time FOR
 % EACH TIRE - page 193
+
+

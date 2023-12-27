@@ -5,8 +5,11 @@ This repository contains the findings and the code I developed to perform statis
 # Cornering Sequence Script
 
 The cornering sequence script contains the following plots/functions:
+
 **Function to visualise the relationship between Front and Rear Brake Pressures against Time**
+
 **Function to visualise the relationship between the speed of the Four Wheels against Time**
+
 **Plot the brake pressure (front & back), steered angle and wheel (for each wheel) to identify the turning points**
 
 Turns out this is not a good approach. I realise it is hard to do it visually. So, it is better to come up with an algorithm to identify the timestamps when the turning is occuring and at each interval are we turning left or right. So, add this to my To-Do List!!

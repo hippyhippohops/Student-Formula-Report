@@ -1,38 +1,23 @@
 FSAE = readtable('cleaned.csv');
 
-%% Estimating Grip Levels of a tire
+%% Estimating Grip Levels of a tire through out the "race"
 
-% Here, the combined acceleration channel will be used to give us a
-% statistical representation of the grip developed by the tires of the car
-% or the portion of this grip being used by the driver.
+G_comb = [];
 
-% when we plot the combined acceleration channel against distance, the
-% larger the area beneath the resulting plot, the more grip the vehicle
-% developed on the track or section of the track being looked at.
+for i=1:length(FSAE{:,'GForceLat'});
+    G_comb(i) = sqrt(FSAE{i,'GForceLat'}^2+FSAE{i,'GForceLong'}^2);
+end
+%I realised that Trip Distance doesn't change , so is there another way to
+%do this. Also,  find out if it is actually possible for me to calculate
+%area under the curve this way since  G_comb is not a function of distance.
+% So find out if I can make it that way.
+%So, figure out why the distance data is so weird
+grip_level = cumtrapz(FSAE{:,"TripDistance"}, G_comb)
 
-% We could integrate the combined acceleration channel in function of lap
-% distance to obtain a lap statistic that is a measure of the amount of
-% grip developed during a single lap. The accuracy of this calculation
-% would be greatly dependent on the accuracy of the lap distance channel.
-% Simply taking the average value of the combined acceleration channel per
-% lap would be a better solution.
+%% Splitting the Grip into different portions of the race: Braking, Acc, Cornering & Aerodynamic
 
-% The problem with this approach would be that we can t compare results
-% between different tracks as the number of high- and low-speed corners and
-% the amount of straights would skew the average combined acceleration
-% values
- 
-% We will therefore need to gate the combined acceleration channel for
-% certain situations in order to get a reliable lap statistic for average
-% grip. Through clever signal gating, we can assess objective numbers to
-% the grip the car is producing in different situations, namely:
-% - Overall Grip
-% - Braking Grip 
-% - Acceleration Grip
-% - Cornering Grip
-% - Aerodynamic Grip
-
-% Let's calculate the combined acceleration 
+% Let's calculate the combined acceleration first to get a feel for the
+% data
 
 G_comb = [];
 
@@ -43,15 +28,12 @@ end
 %Plotting the combined acceleration 
 figure;
 plot(FSAE{:,'Time'},G_comb, 'k');
+title("Combined G Force against Time");
 
-% We now need to set the boundaries to determine these situation. To
-% calculate an overall grip factor, we take the combined acceleration over
-% the course of a lap but only display situations that are grip limited.
-% This way, we can exclude straight-line acceleration where engine power
-% and aerodynamic drag are the limiting factors in the acceleration of the
-% car. 
+% Overall Grip
 
-% Overall Grip- > 1.0
+% Here, we will plot overall grip when combination acceleration > 1.0. 
+% However, note that this is customisable. 
 
 G_overall_grip = G_comb;
 for i=1:length(G_comb)
@@ -61,19 +43,27 @@ for i=1:length(G_comb)
 end
 
 figure;
-plot(FSAE{:,'Time'},G_overall_grip, 'r');
+plot(FSAE{:,'Time'},G_overall_grip, 'r'); % x axis is supposed to be distance.
+title("Overall Combined Acceleration against Time");
+%So, figure out why the distance data is so weird
 
-% Cornering Grip- > 1.0
+% Cornering Grip
 
 GForceLat_cornering = FSAE{:,'GForceLat'};
 GForceLong_cornering = FSAE{:,'GForceLong'};
 
+% Here, we define cornering conditions as when lat G > 0.5. Thus, we want
+% to negate all the G forces when lat G <0.5. Hence, the following
+% function:
 for i=1:length(GForceLat_cornering)
     if GForceLat_cornering(i) < 0.5
         GForceLat_cornering(i) = 0;
         GForceLong_cornering(i) = 0;
     end
 end
+
+% Once again, note that we can define the cornering condition however we
+% want. 
 
 G_comb_cornering = [];
 
@@ -83,18 +73,20 @@ end
 
 figure;
 plot(FSAE{:,'Time'},G_comb_cornering, 'g');
+title("Combined Acceleration when Cornering against Time")
 
-% Braking Grip- kongtindual G > 1.0
+% Braking Grip
 
 GForceLat_braking = FSAE{:,'GForceLat'};
 GForceLong_braking = FSAE{:,'GForceLong'};
 
+% Here, we define braking conditions as when long G < -1.0 . Thus, we want
+% to negate all the G forces when long G > -1.0. Hence, the following
+% function:
 for i=1:length(GForceLat_braking)
-    if GForceLat_braking(i) < 0.5
-        if GForceLong_braking(i) < 0.0
-            GForceLat_cornering(i) = 0;
-            GForceLong_cornering(i) = 0;
-        end
+    if GForceLong_braking(i) > -1.0
+        GForceLong_braking(i) = 0;
+        GForceLat_braking(i) = 0;
     end
 end
 
@@ -106,288 +98,102 @@ end
 
 figure;
 plot(FSAE{:,'Time'},G_comb_braking, 'b'); 
-% This is exactly the same as the first figure
-% Is this reasonable? 
+title("Combined Acceleration when Braking against Time")
 
-% What is the lap distance/lap time? How can I plot Overall grip over
-% laptime?
+% Traction Grip
+GForceLat_traction = FSAE{:,'GForceLat'};
+GForceLong_traction = FSAE{:,'GForceLong'};
+
+% Here, we define traction conditions as when long G > 0 and at the same
+% time the lat G > 0.5. Thus, we want to negate all the G forces when long
+% G < 0 and lat G <0.5. Hence, the following function:
+for i=1:length(GForceLat_traction)
+    if GForceLat_traction(i) < 0.5
+        if GForceLong_traction(i) < 0.0
+            GForceLat_traction(i) = 0;
+            GForceLong_traction(i) = 0;
+        end
+    end
+end
+
+G_comb_traction = [];
+
+for i=1:length(GForceLat_traction);
+    G_comb_traction(i) = sqrt(GForceLat_traction(i)^2+GForceLong_traction(i)^2);
+end
+
+figure;
+plot(FSAE{:,'Time'},G_comb_traction, 'k');
+title("Combined Acceleration (Traction) against Time")
+% My Combined Acceleration (Traction) and Overall G force looks very
+% similar. Is this supposed to be the case? What is the definition of
+% traction? If it is supposed to be the same, explain why. 
+
+% TO_DO LIst next: Now, since I have partitioned the forces based on the
+% situation I can integrate to calculate the overall grip in each situation
+% Also, toy with the idea if I can use these facts to split the time
+% intervals in the cornering sequences. 
 
 %% Working with Tire Pressure Monitoring System 
 
-% We will first plot tire temperature over time for each tire - WHY IS IT
-% ALL WEIRD
-
-%Plotting tire temperature Front Left against Time 
+% We will first plot tire temperature over time and compare their relation 
 figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFL"},'r');
-
-%Plotting tire temperature Front Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFR"},'g');
-
-%Plotting tire temperature Rear Left against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRL"},'b');
-
-%Plotting tire temperature Rear Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRR"},'k');
+title('Tire Temperature (Overall) against Time');
 
-% We will first plot tire temperature (Inner) over time for each tire
-
-%Plotting tire temperature Front Left against Time 
+% We will first plot tire temperature (Inner) over time and compare their
+% relation
 figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFLInner"},'r');
-
-%Plotting tire temperature Front Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFRInner"},'g');
-
-%Plotting tire temperature Rear Left against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRLInner"},'b');
-
-%Plotting tire temperature Rear Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRRInner"},'k');
+title('Tire Temperature (Inner) against Time');
 
-% We will first plot tire temperature (Center) over time for each tire
+% We will first plot tire temperature (Center) over time and compare their
+% relation
 
 %Plotting tire temperature Front Left against Time 
 figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFLCentre"},'r');
-
-%Plotting tire temperature Front Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFRCentre"},'g');
-
-%Plotting tire temperature Rear Left against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRLCentre"},'b');
-
-%Plotting tire temperature Rear Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRRCentre"},'k');
+title('Tire Temperature (Center) against Time');
 
-% We will first plot tire temperature (Outer) over time for each tire
+% We will first plot tire temperature (Outer) over time and compare their
+% relation
 
 %Plotting tire temperature Front Left against Time 
 figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFLOuter"},'r');
-
-%Plotting tire temperature Front Right against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempFROuter"},'g');
-
-%Plotting tire temperature Rear Left against Time
-figure;
+hold on;
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRLOuter"},'b');
-
-%Plotting tire temperature Rear Right against Time
-figure;
+hold on; 
 plot(FSAE{:,"Time"},FSAE{:,"TyreTempRROuter"},'k');
+title('Tire Temperature (Outer) against Time');
 
-%We can see that tire temperature is missing - so we will approximate the
-%tire temperature using the formula given in page 182
+%Figure out why the graph is so weird?? We can see that the column values
+%seem weird too. 
 
-% In order to utilise that formula, we need to calculate tire slip angle
-% and tire slip ratio, we also need to assume track temperature, Thermal
-% conductivity between tire and air, and Thermal conductivity between tire
-% and track surface
-
-% CALCULATE SLIP ANGLE FOR EACH TIRE
-
-% To calculate the slip angle of the front of the car, alpha_f, we need the
-% following data: lateral velocity (v), CG location (a) - [In this case,we
-% assume  that laterak velocity is just 1, but FIND OUT ACTUAL CG
-% LOCATION], Yawing velocity (r) - [In this case,we assume  that yawing
-% velocity is just rotational velocity about the Z axis, from reddit: Yaw
-% Rate and Slip Angles - CHECK IF IT IS TRUE], vehicle velocity (V), and
-% steer angle front wheels (delta). 
-
-% Slip Angle - Front Left
-
-v = FSAE{:,'GForceLat'};
-a = 1;
-r = FSAE{:,'AccelerationZ'};
-V = FSAE{:,'WheelSpeedFL'};
-delta = FSAE{:,'SteeringAngle'};
-
-slip_angle_front_left = [];
-
-for i=1:length(v)
-    slip_angle_front_left(i) = v(i)/V(i) + (a*r(i))/V(i) - delta(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_angle_front_left);
-title('Plot of Slip Angle of the Front Left Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
-
-% Slip Angle - Front Right
-
-v = FSAE{:,'GForceLat'};
-a = 1;
-r = FSAE{:,'AccelerationZ'};
-V = FSAE{:,'WheelSpeedFR'};
-delta = FSAE{:,'SteeringAngle'};
-
-slip_angle_front_right = [];
-
-for i=1:length(v)
-    slip_angle_front_right(i) = v(i)/V(i) + (a*r(i))/V(i) - delta(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_angle_front_right);
-title('Plot of Slip Angle of Front Right Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
-
-%NOTE THAT THE FORMULA FOR SLIP ANGLE IS DIFF FROM FRONT & REAR
-
-% Slip Angle - Rear Left
-
-v = FSAE{:,'GForceLat'};
-a = 1; % We use b for the rear formula
-b = 1;
-r = FSAE{:,'AccelerationZ'};
-V = FSAE{:,'WheelSpeedRL'};
-
-slip_angle_rear_left = [];
-
-for i=1:length(v)
-    slip_angle_rear_left(i) = v(i)/V(i) + (b*r(i))/V(i) ;
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_angle_rear_left);
-title('Plot of Slip Angle of Rear Left Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
-
-% Slip Angle - Rear Right
-
-v = FSAE{:,'GForceLat'};
-a = 1;
-b = 1;
-r = FSAE{:,'AccelerationZ'};
-V = FSAE{:,'WheelSpeedRR'};
-delta = FSAE{:,'SteeringAngle'};
-
-slip_angle_rear_right = [];
-
-for i=1:length(v)
-    slip_angle_rear_right(i) = v(i)/V(i) + (b*r(i))/V(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_angle_rear_right);
-title('Plot of Slip Angle of Rear Right Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
-
-
-% CALCULATE SLIP RATIO FOR EACH TIRE
-
-% SAE J670 defines the slip ratio of a tire as SR=(Ω − Ω0)/Ω0. In this
-% equation, Ω is the angular velocity of the driven wheel and Ω0 is the
-% angular velocity of the free-rolling situation. So, first we need to
-% calculate Ω0 is the angular velocity of the free-rolling situation, which
-% is expressed as v=ωR. In this equation, R is the object's radius and v is
-% its linear velocity.
-
-% Slip ratio for front left wheel
-
-angular_velocity_freerolling_FL = [];
-wheel_radius_FL = 12; 
-%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
-%DO I KEEP TRACK OF THIS?
-linear_velocity = FSAE{:,'WheelSpeedFL'};
-for i=1:length(linear_velocity)
-    angular_velocity_freerolling_FL(i) = linear_velocity(i)/wheel_radius_FL;
-end
-
-slip_ratio_FL = [];
-for i=1:length(linear_velocity)
-    slip_ratio_FL(i) = (linear_velocity(i)-angular_velocity_freerolling_FL(i))/angular_velocity_freerolling_FL(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_ratio_FL);
-title('Slip Ratio of Front Left Wheel against Time');
-
-% Slip ratio for front right wheel
-
-angular_velocity_freerolling_FR = [];
-wheel_radius_FR = 12; 
-%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
-%DO I KEEP TRACK OF THIS?
-linear_velocity = FSAE{:,'WheelSpeedFR'};
-for i=1:length(linear_velocity)
-    angular_velocity_freerolling_FR(i) = linear_velocity(i)/wheel_radius_FR;
-end
-
-slip_ratio_FR = [];
-for i=1:length(linear_velocity)
-    slip_ratio_FR(i) = (linear_velocity(i)-angular_velocity_freerolling_FR(i))/angular_velocity_freerolling_FR(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_ratio_FR);
-title('Slip Ratio of Front Right Wheel against Time');
-
-% Slip ratio for rear left wheel
-
-angular_velocity_freerolling_RL = [];
-wheel_radius_RL = 12; 
-%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
-%DO I KEEP TRACK OF THIS?
-linear_velocity = FSAE{:,'WheelSpeedRL'};
-for i=1:length(linear_velocity)
-    angular_velocity_freerolling_RL(i) = linear_velocity(i)/wheel_radius_RL;
-end
-
-slip_ratio_RL = [];
-for i=1:length(linear_velocity)
-    slip_ratio_RL(i) = (linear_velocity(i)-angular_velocity_freerolling_RL(i))/angular_velocity_freerolling_RL(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_ratio_RL);
-title('Slip Ratio of Rear Left Wheel against Time');
-
-% Slip ratio for Rear right wheel
-
-angular_velocity_freerolling_RR = [];
-wheel_radius_RR = 12; 
-%SEE IF THIS IS ACTUALLY CORRECT? AS TIRE DEGRADES RADIUS CHANGES. SO HOW
-%DO I KEEP TRACK OF THIS?
-linear_velocity = FSAE{:,'WheelSpeedRR'};
-for i=1:length(linear_velocity)
-    angular_velocity_freerolling_RR(i) = linear_velocity(i)/wheel_radius_RR;
-end
-
-slip_ratio_RR = [];
-for i=1:length(linear_velocity)
-    slip_ratio_RR(i) = (linear_velocity(i)-angular_velocity_freerolling_RR(i))/angular_velocity_freerolling_RR(i);
-end
-
-figure;
-plot(FSAE{:,'Time'},slip_ratio_RR);
-title('Slip Ratio of Rear Right Wheel against Time');
-
-
-% CALCULATE TIRE TEMPERATURE FOR EACH TIRE
-
-
-
-% PLOT TIRE TEMPERATURE AGAINST TIME FOR EACH TIRE
-
-% PLOT Cold tire pressure estimation using the Ideal Gas Law and TPMS data
-% against time (formula is given on page 179)
-
-% absolute value of lateral acceleration versus front and rear tire
-% temperature - page 185
-
-% Plot Tire workload calculation from tire temperatures against time FOR
-% EACH TIRE - page 193
+%I seem to be missing tire pressure data, ask for that. 
 
 

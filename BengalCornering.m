@@ -1,5 +1,5 @@
 %% Scripts Dealing with Cornering
-
+FSAE = readtable('cleaned.csv');
 
 %% Driver Cornering Sequence
 
@@ -50,20 +50,20 @@ title('Plot Steering Angle against Time');
 
 figure; 
 hold on;
-plot(FSAE{:,'Time'},FSAE{:,'BrakePressureFront'});
+plot(FSAE{:,'Time'},FSAE{:,'BrakePressureFront'},'b');
 hold on;
-plot(FSAE{:,'Time'},FSAE{:,'BrakePressureRear'});
+plot(FSAE{:,'Time'},FSAE{:,'BrakePressureRear'},'r');
 title('Relationship between Front and Rear Brake Pressures against Time');
 
 figure; 
 hold on;
-plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedFL'});
+plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedFL'},'b');
 hold on;
-plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedFR'});
+plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedFR'},'g');
 hold on;
-plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedRL'});
+plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedRL'},'k');
 hold on;
-plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedRR'});
+plot(FSAE{:,'Time'},FSAE{:,'WheelSpeedRR'},'r');
 title('Relationship between Wheel Speed (each tire) against Time');
 
 %Here, I wanted to plot the brake pressure (front & back), steered angle
@@ -123,14 +123,138 @@ hold on;
 plot(FSAE{:,'Time'},FSAE{:,'SteeringAngle'});
 title('Chartering of Brake Pressure, Wheel Speed (RR) & Throttle Position against Time');
 
-% ROOM FOR IMPROVEMENT 1: WHILE THE ABOVE PICTURE IS ALL GOOD, it would be
-% better to slice the timeline into pieces where the steered angle changes 
-% from 0 and returns to 0, so that we actually identify when the car turns.
-% This will allow us to pin-point the intervals the car is turning at so 
-% that the above analysis will be more fruitful. For now, there are some 
-% issues with the Steering angle; it is all 0, so do the algorithmic design
-% first. I guess working on identifying corners should be the first
-% business we should be concerned about. 
+% Finding when the car turns
+%To find out when the car is turning I am going to use the lateral force
+%and I am going to define a turn when lat G >0.5. So for intervals where
+%lat G is >0.5, the car is defined to be turning
+
+
+indicator_function = [];
+for i=1:length(FSAE{:,'GForceLat'})
+    if (FSAE{:,'GForceLat'}(i) < 0.5)
+        indicator_function(i) = 0;
+    else
+        indicator_function(i) = 1;
+    end
+end
+figure;
+plot(FSAE{:,'Time'},indicator_function);
+title('Indicator Function Against Time');
+
+starting_time_index =[];
+ending_time_index =[];
+for i=1:length(indicator_function)-1
+    if (indicator_function(i) == 0 && indicator_function(i+1)==1)
+        starting_time_index =[starting_time_index i+1];
+    elseif (indicator_function(i) == 1 && indicator_function(i+1)==0)
+        ending_time_index =[ending_time_index i];
+    end
+end
+starting_time_index;
+ending_time_index;
+turning_intervals =[];
+for i=1:length(ending_time_index)
+    [FSAE{:,'Time'}(starting_time_index(i)),FSAE{:,'Time'}(ending_time_index(i))];
+    turning_intervals = [turning_intervals, [FSAE{:,'Time'}(starting_time_index(i)),FSAE{:,'Time'}(ending_time_index(i))]];
+end
+
+
+% turning_intervals doesn't give me an array of array. Note that the length
+% of starting time index is 49. so turning intervals is just 98 length
+% vector. So i think it is better to create a 3D vector.
+starting_time_index;
+ending_time_index;
+array_1 = [];
+array_2 = [];
+for i=1:length(ending_time_index)
+    array_1 = [array_1, FSAE{:,'Time'}(starting_time_index(i))];
+    array_2 = [array_2 ,FSAE{:,'Time'}(ending_time_index(i))];
+end
+turning_intervals_matrix =reshape(array_1,7,7);
+turning_intervals_matrix(:,:,2) = reshape(array_2,7,7);
+turning_intervals_matrix;
+
+%% Revision to the previous part (FL)
+
+% In plotting the brake pressure (front & back), steered angle
+% and wheel (for each wheel) to identify the turning points, I realised
+% that it is hard to do it visually. So, it is better to
+%come up with an algorithm to identify the timestamps when the turning is
+%occuring and at each interval are we turning left or right. So, that's
+%what we will do now.
+
+starting_time_index;
+ending_time_index;
+
+for i=1:length(starting_time_index)
+    figure;
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'ThrottlePosition'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureFront'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureRear'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedFL'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'});
+    title('Comparison of Brake Pressure, Wheel Speed (FL) & Throttle Position against Time');
+end
+
+%% Revision to the previous part (FR)
+
+
+for i=1:length(starting_time_index)
+    figure;
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'ThrottlePosition'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureFront'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureRear'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedFR'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'});
+    title('Chartering of Brake Pressure, Wheel Speed (FR) & Throttle Position against Time');
+end
+
+%% Revision to the previous part (RL)
+
+for i=1:length(starting_time_index)
+    figure;
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'ThrottlePosition'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureFront'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureRear'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedRL'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'});
+    title('Chartering of Brake Pressure, Wheel Speed (RL) & Throttle Position against Time');
+end
+
+%% %% Revision to the previous part (RR)
+
+for i=1:length(starting_time_index)
+    figure;
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'ThrottlePosition'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureFront'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'BrakePressureRear'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedRR'});
+    hold on;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'});
+    title('Chartering of Brake Pressure, Wheel Speed (RR) & Throttle Position against Time');
+end
+
+
+
 
 %% Now, we calculate the slip angle and plot the lateral force against the slip angle
 
@@ -144,7 +268,7 @@ title('Chartering of Brake Pressure, Wheel Speed (RR) & Throttle Position agains
 % Rate and Slip Angles - CHECK IF IT IS TRUE], vehicle velocity (V), and
 % steer angle front wheels (delta). 
 
-% Slip Angle - Front Left
+%% Slip Angle - Front Left
 
 v = FSAE{:,'GForceLat'};
 a = 1;
@@ -161,9 +285,39 @@ end
 figure;
 plot(FSAE{:,'Time'},slip_angle_front_left);
 title('Plot of Slip Angle of the Front Left Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
 
-% Slip Angle - Front Right
+%Doing the same thing for each turn
+
+starting_time_index;
+ending_time_index;
+
+for i=1:length(starting_time_index)
+    v = FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'};
+    length(starting_time_index(i):ending_time_index(i)); %32
+    length(v); %32
+    a = 1;
+    r = FSAE{starting_time_index(i):ending_time_index(i),'AccelerationZ'};
+    V = FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedFL'};
+    delta = FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'};
+    slip_angle_front_left = [];
+    for j=1:length(v)
+        slip_angle_front_left(j) = v(j)/V(j) + (a*r(j))/V(j) - delta(j);
+    end
+    length(slip_angle_front_left);
+    length(FSAE{starting_time_index(i):ending_time_index(i),'Time'});
+    slip_angle_front_left;
+    FSAE{starting_time_index(i):ending_time_index(i),'Time'};
+    figure;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},slip_angle_front_left);
+    title('Plot of Slip Angle of the Front Left Wheel against Time');
+    figure;
+    plot(slip_angle_front_left,FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'});
+    title('Plot of Slip Angle (FL) vs GForceLat')
+end
+
+
+
+%% Slip Angle - Front Right
 
 v = FSAE{:,'GForceLat'};
 a = 1;
@@ -180,11 +334,39 @@ end
 figure;
 plot(FSAE{:,'Time'},slip_angle_front_right);
 title('Plot of Slip Angle of Front Right Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
+
+%We do the same thing for each turn
+
+starting_time_index;
+ending_time_index;
+
+for i=1:length(starting_time_index)
+    v = FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'};
+    length(starting_time_index(i):ending_time_index(i)); %32
+    length(v); %32
+    a = 1;
+    r = FSAE{starting_time_index(i):ending_time_index(i),'AccelerationZ'};
+    V = FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedFR'};
+    delta = FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'};
+    slip_angle_front_right = [];
+    for j=1:length(v)
+        slip_angle_front_right(j) = v(j)/V(j) + (a*r(j))/V(j) - delta(j);
+    end
+    length(slip_angle_front_right);
+    length(FSAE{starting_time_index(i):ending_time_index(i),'Time'});
+    slip_angle_front_right;
+    FSAE{starting_time_index(i):ending_time_index(i),'Time'};
+    figure;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},slip_angle_front_right);
+    title('Plot of Slip Angle of the Front Right Wheel against Time');
+    figure;
+    plot(slip_angle_front_right,FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'});
+    title('Plot of Slip Angle (FR) vs GForceLat')
+end
 
 %NOTE THAT THE FORMULA FOR SLIP ANGLE IS DIFF FROM FRONT & REAR
 
-% Slip Angle - Rear Left
+%% Slip Angle - Rear Left
 
 v = FSAE{:,'GForceLat'};
 a = 1; % We use b for the rear formula
@@ -201,9 +383,37 @@ end
 figure;
 plot(FSAE{:,'Time'},slip_angle_rear_left);
 title('Plot of Slip Angle of Rear Left Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
 
-% Slip Angle - Rear Right
+%We do the same thing for each turn
+
+starting_time_index;
+ending_time_index;
+
+for i=1:length(starting_time_index)
+    v = FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'};
+    length(starting_time_index(i):ending_time_index(i)); %32
+    length(v); %32
+    a = 1;
+    r = FSAE{starting_time_index(i):ending_time_index(i),'AccelerationZ'};
+    V = FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedRL'};
+    delta = FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'};
+    slip_angle_rear_left = [];
+    for j=1:length(v)
+        slip_angle_rear_left(j) = v(j)/V(j) + (a*r(j))/V(j) - delta(j);
+    end
+    length(slip_angle_rear_left);
+    length(FSAE{starting_time_index(i):ending_time_index(i),'Time'});
+    slip_angle_rear_left;
+    FSAE{starting_time_index(i):ending_time_index(i),'Time'};
+    figure;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},slip_angle_rear_left);
+    title('Plot of Slip Angle of the Rear Left Wheel against Time')
+    figure;
+    plot(slip_angle_rear_left,FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'});
+    title('Plot of Slip Angle (RL) vs GForceLat')
+end
+
+%% Slip Angle - Rear Right
 
 v = FSAE{:,'GForceLat'};
 a = 1;
@@ -221,7 +431,39 @@ end
 figure;
 plot(FSAE{:,'Time'},slip_angle_rear_right);
 title('Plot of Slip Angle of Rear Right Wheel against Time');
-%FIGURE OUT WHY THE OUTPUT IS SO WEIRD
+
+%We do the same thing for each turn
+
+starting_time_index;
+ending_time_index;
+
+for i=1:length(starting_time_index)
+    v = FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'};
+    length(starting_time_index(i):ending_time_index(i)); %32
+    length(v); %32
+    a = 1;
+    r = FSAE{starting_time_index(i):ending_time_index(i),'AccelerationZ'};
+    V = FSAE{starting_time_index(i):ending_time_index(i),'WheelSpeedRR'};
+    delta = FSAE{starting_time_index(i):ending_time_index(i),'SteeringAngle'};
+    slip_angle_rear_right = [];
+    for j=1:length(v)
+        slip_angle_rear_right(j) = v(j)/V(j) + (a*r(j))/V(j) - delta(j);
+    end
+    length(slip_angle_rear_right);
+    length(FSAE{starting_time_index(i):ending_time_index(i),'Time'});
+    slip_angle_rear_right;
+    FSAE{starting_time_index(i):ending_time_index(i),'Time'};
+    figure;
+    plot(FSAE{starting_time_index(i):ending_time_index(i),'Time'},slip_angle_rear_right);
+    title('Plot of Slip Angle of the Rear Right Wheel against Time');
+    figure;
+    plot(slip_angle_rear_right,FSAE{starting_time_index(i):ending_time_index(i),'GForceLat'});
+    title('Plot of Slip Angle (RR) vs GForceLat');
+end
+
+%% Repeat the same thing above but plotting the slip angle against the 
+% lateral force for each wheel - I added this above
+
 
 % Now, after plotting the slip angle against the lateral force for each
 % wheel

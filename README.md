@@ -29,35 +29,19 @@ To do List:
 
 The Tire Performance script contains the following functions/computations:
 
-### Estimating Overall Grip by calculating the combined acceleration
+1) Estimating Overall Combined Acceleration through the entire time 
+2) Extracting Combined Acceleration Values for each of the situations above: Overall Combined Acceleration, Combined Acceleration when Braking,Combined Acceleration when Cornering, Combined Acceleration when Accelerating, Combined Acceleration (Traction). 
 
-Firstly, thusfar, I have only computed the combined acceleration. I have to calculate the overall grip. 
+Todo List: 
 
-But then The problem with this approach is that we can’t compare results between different tracks as the number of high- and low-speed corners and the amount of straights
-would skew the average combined acceleration values. So, we gated the combined acceleration channel for certain situations in order to get a reliable lap statistic
-for average grip. This lead to the following function:
-
-### Extracting Combined Acceleration Values for each of the situations above.
-
-1) Overall Combined Acceleration
-2) Combined Acceleration when Braking
-3) Combined Acceleration when Cornering
-4) Combined Acceleration when Accelerating
-5) Combined Acceleration (Traction)
-
-Something to work on: 
-
-1) My Combined Acceleration (Traction) and Overall G force looks very similar. Is this supposed to be the case? What is the definition of traction? If it is supposed to be the same, explain why.
-2) Now, since I have partitioned the forces based on the situation I can integrate to calculate the overall grip in each situation. Also, toy with the idea if I can use these facts to split the time intervals in the cornering sequences. 
-
-### Plotting tire temperature and pressure 
-
-Something to work on:
-
-1) Figure out why the graph is so weird?? We can see that the column values seem weird too. 
-2) I seem to be missing tire pressure data, ask for that. 
-
-
+1) Find tire pressure and tire temperature data
+2) Go through section 8.3
+3) Go through section 8.4
+4) Go through section 8.5
+5) Go through section 8.6
+6) Go through section 8.7
+7) Go through section 8.8
+8) Go through section 8.9
 
 
 ## Wheel Loads and Weight Transfer Script

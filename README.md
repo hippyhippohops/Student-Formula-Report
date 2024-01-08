@@ -1,6 +1,6 @@
 # Student-Formula-Report
 
-This repository contains the findings and the code I developed to perform statistical analysis and study the vehicular dynamics on the Bengal 2023. Here are the following scripts and their descriptions:
+This repository contains the findings and the code I developed to perform statistical analysis and study the vehicular dynamics on the Bengal 2023. Here are the following scripts and their descriptions. The work here is done based on Jorge Segers - Analysis Techniques for Race Car Data Acquistion. 
 
 ## Cornering Sequence Script
 
